@@ -1,0 +1,34 @@
+@rt.message(F.text == "✅ Javobni tekshirish")
+async def ask_test_code(message:Message, state:FSMContext):
+    await message.answer("<b>✅ Javobni tekshirish</b>\n\n"
+                        "Test javoblaringizni quyidagi ko'rinishlardan birida yozib yuboring:\n\n"
+                         "<i>test_kodi*abcdab....</i>\n"
+                         "yoki\n"
+                         "<i>test_kodi*1a2c3b4d5a6b...</i>")
+    await state.set_state(CheckTest.answers)
+
+
+@rt.message(F.text, CheckTest.answers)
+async def get_answers(message:Message, state:FSMContext):
+    await message.answer("Natija:")
+    await state.clear()
+
+
+@rt.message(F.text == "📊 Natijalarim")
+async def send_results(message:Message):
+    await message.answer("Your results:\n\n1. \n2. \n...")
+
+
+@rt.message(F.text == "🏆 Sertifikatlarim")
+async def send_results(message:Message):
+    await message.answer("Your sertificates:\n\n1. \n2. \n...")
+
+
+@rt.message(F.text == "👤 Profile")
+async def send_results(message:Message):
+    await message.answer("Your Profile:\n\n...")
+
+
+@rt.message(F.text == "ℹ️ Bot haqida")
+async def send_results(message:Message):
+    await message.answer("About this bot:\n\n...")
