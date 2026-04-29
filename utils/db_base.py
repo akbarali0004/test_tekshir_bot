@@ -44,7 +44,7 @@ class Database:
                             invite_link TEXT
                             );""")
 
-    # 1. Userlarni boshqarish
+    # Userlarni boshqarish
     async def add_user(self, tg_id: int, full_name: str | None, role='user'):
         async with sq.connect(self.db_path) as db:
             await db.execute(
@@ -62,9 +62,20 @@ class Database:
         async with sq.connect(self.db_path) as db:
             async with db.execute("SELECT * FROM users WHERE tg_id = ?", (tg_id,)) as cursor:
                 return await cursor.fetchone()
+            
+    async def count_users(self):
+        async with sq.connect(self.db_path) as db:
+            cursor = await db.execute("SELECT COUNT(*) FROM users")
+            res = await cursor.fetchone()
+            return res[0]
+
+    async def get_all_users(self):
+        async with sq.connect(self.db_path) as db:
+            cursor = await db.execute("SELECT tg_id FROM users")
+            return await cursor.fetchall()
 
 
-    # 2. Adminlarni boshqarish
+    # Adminlar
     async def make_admin(self, tg_id: int):
         async with sq.connect(self.db_path) as db:
             await db.execute("UPDATE users SET role = 'admin' WHERE tg_id = ?", (tg_id,))
@@ -85,14 +96,28 @@ class Database:
             await db.execute("UPDATE users SET role = 'user' WHERE tg_id = ?", (tg_id,))
             await db.commit()
 
+    async def get_admin_tests_paginated(self, admin_id, limit, offset):
+        async with sq.connect(self.db_path) as db:
+            cursor = await db.execute(
+                "SELECT * FROM tests WHERE author_id = ? ORDER BY id DESC LIMIT ? OFFSET ?",
+                (admin_id, limit, offset)
+            )
+            return await cursor.fetchall()
 
-    # 3. Testlarni boshqarish
-    async def add_test(self, title:str, answers: str, author_id: int):
+    async def count_admins(self):
+        async with sq.connect(self.db_path) as db:
+            cursor = await db.execute("SELECT COUNT(*) FROM users WHERE role IN ('owner', 'admin')")
+            res = await cursor.fetchone()
+            return res[0] if res else 0
+
+
+    # Testlar
+    async def add_test(self, title:str, answers: str, author_id: int, created_at:str):
         async with sq.connect(self.db_path) as db:
             cursor = await db.execute("""
-                INSERT INTO tests (title, answers, author_id) 
-                VALUES (?, ?, ?)
-            """, (title, answers, author_id))
+                INSERT INTO tests (title, answers, author_id, created_at) 
+                VALUES (?, ?, ?, ?)
+            """, (title, answers, author_id, created_at))
             await db.commit()
             return cursor.lastrowid
         
@@ -106,8 +131,26 @@ class Database:
             await db.execute("UPDATE tests SET status = ? WHERE id = ?", (status, test_code,))
             await db.commit()
 
+    async def get_admin_tests(self, admin_id):
+        async with sq.connect(self.db_path) as db:
+            cursor = await db.execute("SELECT * FROM tests WHERE author_id = ? ORDER BY id DESC LIMIT 10", (admin_id,))
+            return await cursor.fetchall()
+        
+    async def get_admin_tests_count(self, admin_id):
+        async with sq.connect(self.db_path) as db:
+            cursor = await db.execute("SELECT COUNT(*) FROM tests WHERE author_id = ?", (admin_id,))
+            res = await cursor.fetchone()
+            return res[0] if res else 0
+        
+    
+    async def count_all_tests(self):
+        async with sq.connect(self.db_path) as db:
+            cursor = await db.execute("SELECT COUNT(*) FROM tests")
+            res = await cursor.fetchone()
+            return res[0] if res else 0
+
                 
-    # 4. Natijani boshqarish
+    # Natija
     async def save_result(self, user_id: int, test_id: int, result: str, percentage: float):
         async with sq.connect(self.db_path) as db:
             await db.execute("""
@@ -132,9 +175,39 @@ class Database:
         async with sq.connect(self.db_path) as db:
             await db.execute("""DELETE FROM results WHERE id = ?""", (test_id,))
             return await db.commit()
+        
+    async def check_user_finished(self, user_id, test_id):
+        async with sq.connect(self.db_path) as db:
+            cursor = await db.execute("SELECT id FROM results WHERE user_id = ? AND test_id = ?", (user_id, test_id))
+            return await cursor.fetchone()
+
+    async def get_user_results(self, user_id):
+        async with sq.connect(self.db_path) as db:
+            cursor = await db.execute("""
+                SELECT tests.title, results.result, results.percentage, results.created_at
+                FROM results
+                JOIN tests ON results.test_id = tests.id
+                WHERE results.user_id = ?
+                ORDER BY results.id DESC
+            """, (user_id,))
+            return await cursor.fetchall()
+
+    async def get_user_results_count(self, user_id):
+        async with sq.connect(self.db_path) as db:
+            cursor = await db.execute("SELECT COUNT(*) FROM results WHERE user_id = ?", (user_id,))
+            res = await cursor.fetchone()
+            return res[0] if res else 0
+        
+    async def add_result(self, user_id: int, test_id: int, result: str, percentage: float):
+        async with sq.connect(self.db_path) as db:
+            await db.execute("""
+                INSERT INTO results (user_id, test_id, result, percentage)
+                VALUES (?, ?, ?, ?)
+            """, (user_id, test_id, result, percentage))
+            await db.commit()
 
 
-    # 5. Kanallarni boshqarish
+    # Kanallar
     async def add_channel(self, title:str | None, channel_id: int, invite_link: str | None):
         async with sq.connect(self.db_path) as db:
             await db.execute("INSERT OR IGNORE INTO channels (channel_id, invite_link) VALUES (?, ?)", 
@@ -156,89 +229,8 @@ class Database:
             await db.execute("DELETE FROM channels WHERE channel_id = ?", (channel_id,))
             await db.commit()
 
-    
-    # Foydalanuvchi bir marta topshirishini tekshirish
-    async def check_user_finished(self, user_id, test_id):
-        async with sq.connect(self.db_path) as db:
-            cursor = await db.execute("SELECT id FROM results WHERE user_id = ? AND test_id = ?", (user_id, test_id))
-            return await cursor.fetchone()
-
-    # Foydalanuvchining barcha natijalarini olish (JOIN orqali)
-    async def get_user_results(self, user_id):
-        async with sq.connect(self.db_path) as db:
-            cursor = await db.execute("""
-                SELECT tests.title, results.result, results.percentage, results.created_at
-                FROM results
-                JOIN tests ON results.test_id = tests.id
-                WHERE results.user_id = ?
-                ORDER BY results.id DESC
-            """, (user_id,))
-            return await cursor.fetchall()
-
-    # Topshirilgan testlar soni
-    async def get_user_results_count(self, user_id):
-        async with sq.connect(self.db_path) as db:
-            cursor = await db.execute("SELECT COUNT(*) FROM results WHERE user_id = ?", (user_id,))
-            res = await cursor.fetchone()
-            return res[0] if res else 0
-        
-    async def add_result(self, user_id: int, test_id: int, result: str, percentage: float):
-        async with sq.connect(self.db_path) as db:
-            await db.execute("""
-                INSERT INTO results (user_id, test_id, result, percentage)
-                VALUES (?, ?, ?, ?)
-            """, (user_id, test_id, result, percentage))
-            await db.commit()
-
-        
-    async def count_users(self):
-        async with sq.connect(self.db_path) as db:
-            cursor = await db.execute("SELECT COUNT(*) FROM users")
-            res = await cursor.fetchone()
-            return res[0]
-
-    async def get_admin_tests(self, admin_id):
-        async with sq.connect(self.db_path) as db:
-            # author_id bo'yicha testlarni olish
-            cursor = await db.execute("SELECT * FROM tests WHERE author_id = ? ORDER BY id DESC LIMIT 10", (admin_id,))
-            return await cursor.fetchall()
-
-    async def get_all_users(self):
-        async with sq.connect(self.db_path) as db:
-            cursor = await db.execute("SELECT tg_id FROM users")
-            return await cursor.fetchall()
-        
-
-    async def get_admin_tests_paginated(self, admin_id, limit, offset):
-        async with sq.connect(self.db_path) as db:
-            cursor = await db.execute(
-                "SELECT * FROM tests WHERE author_id = ? ORDER BY id DESC LIMIT ? OFFSET ?",
-                (admin_id, limit, offset)
-            )
-            return await cursor.fetchall()
-
-    async def get_admin_tests_count(self, admin_id):
-        async with sq.connect(self.db_path) as db:
-            cursor = await db.execute("SELECT COUNT(*) FROM tests WHERE author_id = ?", (admin_id,))
-            res = await cursor.fetchone()
-            return res[0] if res else 0
-        
-    
-    async def count_all_tests(self):
-        async with sq.connect(self.db_path) as db:
-            cursor = await db.execute("SELECT COUNT(*) FROM tests")
-            res = await cursor.fetchone()
-            return res[0] if res else 0
-
-    async def count_admins(self):
-        async with sq.connect(self.db_path) as db:
-            cursor = await db.execute("SELECT COUNT(*) FROM users WHERE role IN ('owner', 'admin')")
-            res = await cursor.fetchone()
-            return res[0] if res else 0
-
     async def count_channels(self):
         async with sq.connect(self.db_path) as db:
-            # Majburiy obuna kanallari jadvali nomi 'channels' deb faraz qilamiz
             cursor = await db.execute("SELECT COUNT(*) FROM channels")
             res = await cursor.fetchone()
             return res[0] if res else 0

@@ -3,7 +3,7 @@ from aiogram.types import Message, CallbackQuery
 from aiogram.filters import Command, CommandStart
 from aiogram.fsm.context import FSMContext
 
-from keyboards import user_menu, admin_menu, owner_menu
+from keyboards import user_menu, admin_menu, ownerMenu
 from states import RegisterState
 from data.loader import db
 
@@ -22,7 +22,7 @@ async def start_handler(message: Message, state:FSMContext):
         role = user[4]
 
         if role == 'owner':
-            await message.answer(f"Xush kelibsiz, Admin <b>{full_name}</b>!\n\nBoshqaruv paneli ishga tushdi.", reply_markup=owner_menu)
+            await message.answer(f"Xush kelibsiz, Admin <b>{full_name}</b>!\n\nBoshqaruv paneli ishga tushdi.", reply_markup=ownerMenu(user_id))
         elif role == 'admin':
             await message.answer(f"Xush kelibsiz, Admin <b>{full_name}</b>!\n\nBoshqaruv paneli ishga tushdi.", reply_markup=admin_menu)
         else:
@@ -34,6 +34,7 @@ async def start_handler(message: Message, state:FSMContext):
                             "Agar ism familiyangizni kiritmasangiz sizni tanitish uchun telegram nomingizdan foydalanamiz, "
                             "buning uchun yuboring - /skip")
         await state.set_state(RegisterState.name)
+
 
 @rt.callback_query(F.data == "check_subs:start")
 async def handler(call: CallbackQuery, state:FSMContext):
@@ -48,7 +49,7 @@ async def handler(call: CallbackQuery, state:FSMContext):
         role = user[4]
 
         if role == 'owner':
-            await call.message.answer(f"Xush kelibsiz, Admin <b>{full_name}</b>!\n\nBoshqaruv paneli ishga tushdi.", reply_markup=owner_menu)
+            await call.message.answer(f"Xush kelibsiz, Admin <b>{full_name}</b>!\n\nBoshqaruv paneli ishga tushdi.", reply_markup=ownerMenu(user_id))
         elif role == 'admin':
             await call.message.answer(f"Xush kelibsiz, Admin <b>{full_name}</b>!\n\nBoshqaruv paneli ishga tushdi.", reply_markup=admin_menu)
         else:

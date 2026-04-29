@@ -1,12 +1,11 @@
 import logging
 
 from aiogram import Router, F, Bot
-from aiogram.types import Message, CallbackQuery, ReplyKeyboardRemove
-from aiogram.filters import Command
+from aiogram.types import Message, CallbackQuery
 from aiogram.fsm.context import FSMContext
-from aiogram.exceptions import TelegramBadRequest
+from aiogram.types import LinkPreviewOptions
 
-from keyboards import owner_menu, back_btn, get_channel, channelsMenu, channelsListBtn, checkerDelBtn
+from keyboards import ownerMenu, back_btn, get_channel, channelsMenu, channelsListBtn, checkerDelBtn
 from states import AddChannel, DelChannel
 from filters import IsOwner
 from data.loader import db, update_channels_cache
@@ -37,6 +36,20 @@ async def ask_channel_id(call:CallbackQuery, state:FSMContext):
     await state.set_state(AddChannel.channel_id)
 
 
+@rt.message(F.text == "↩️ Orqaga", AddChannel.channel_id)
+async def back_add_channel__(message:Message, state:FSMContext):
+    data = await state.get_data()
+    channels = data.get("channels", [])
+
+    matn = make_channels_list(channels)
+    
+    user_id = message.from_user.id
+    await message.delete()
+    await message.answer("Kanal qo'shish bekor qilindi", reply_markup=ownerMenu(user_id))
+    await message.answer(matn, reply_markup=channelsMenu(len(channels)), link_preview_options=LinkPreviewOptions(is_disabled=True))
+    await state.set_state(AddChannel.channels)
+
+
 @rt.message(AddChannel.channel_id, F.forward_from_chat | F.chat_shared)
 async def get_channel_id(message:Message, state:FSMContext, bot:Bot):
     if message.forward_from_chat:
@@ -44,6 +57,7 @@ async def get_channel_id(message:Message, state:FSMContext, bot:Bot):
     else:
         new_channel = message.chat_shared.chat_id
 
+    user_id = message.from_user.id
     data = await state.get_data()
     channels = data.get("channels", [])
 
@@ -70,32 +84,19 @@ async def get_channel_id(message:Message, state:FSMContext, bot:Bot):
         await message.answer(
             "<b>Kanal muvaffaqiyatli qo'shildi ✅</b>\n\n"
             "Majburiy obuna to'g'ri ishlashi uchun bot kanalga admin qilishni unutmang ❗️",
-            reply_markup=owner_menu
+            reply_markup=ownerMenu(user_id)
         )
     else:
-        await message.answer("<b>Bu kanal avvalroq qo'shilgan ⚠️</b>", reply_markup=owner_menu)
+        await message.answer("<b>Bu kanal avvalroq qo'shilgan ⚠️</b>", reply_markup=ownerMenu(user_id))
 
     matn = make_channels_list(channels)
-    await message.answer(matn, reply_markup=channelsMenu(len(channels)))
+    await message.answer(matn, reply_markup=channelsMenu(len(channels)), link_preview_options=LinkPreviewOptions(is_disabled=True))
     await state.set_state(AddChannel.channels)
 
 
 @rt.message(AddChannel.channel_id)
 async def send_error_channel_id(message:Message, state:FSMContext):
     await message.answer("Iltimos xabarni forward qilib yuboring !", reply_markup=back_btn)
-
-
-@rt.message(F.text == "↩️ Orqaga", AddChannel.channel_id)
-async def back_add_channel__(message:Message, state:FSMContext):
-    data = await state.get_data()
-    channels = data.get("channels", [])
-
-    matn = make_channels_list(channels)
-    
-    await message.delete()
-    await message.answer("Kanal qo'shish bekor qilindi", reply_markup=owner_menu)
-    await message.answer(matn, reply_markup=channelsMenu(len(channels)))
-    await state.set_state(AddChannel.channels)
 
 
 @rt.callback_query(F.data == "back_", AddChannel.channel_id)
@@ -105,8 +106,9 @@ async def back_add_channel_(call:CallbackQuery, state:FSMContext):
 
     matn = make_channels_list(channels)
     
+    await call.message.delete()
     await call.message.answer("Yangi kanal qo'shilmadi.")
-    await call.message.answer(matn, reply_markup=channelsMenu(len(channels)))
+    await call.message.answer(matn, reply_markup=channelsMenu(len(channels)), link_preview_options=LinkPreviewOptions(is_disabled=True))
     await state.set_state(AddChannel.channels)
 
 
@@ -145,7 +147,7 @@ async def del_channel_yes(call:CallbackQuery, state:FSMContext):
     
     await call.message.delete()
     await call.message.answer("Kanal muvaffaqiyatli uzildi ✅")
-    await call.message.answer(matn, reply_markup=channelsMenu(len(channels)))
+    await call.message.answer(matn, reply_markup=channelsMenu(len(channels)), link_preview_options=LinkPreviewOptions(is_disabled=True))
     await state.set_state(AddChannel.channels)
 
 
@@ -158,7 +160,7 @@ async def del_channel_no(call:CallbackQuery, state:FSMContext):
     
     await call.message.delete()
     await call.message.answer("Kanal uzish bekor qilindi ❌")
-    await call.message.answer(matn, reply_markup=channelsMenu(len(channels)))
+    await call.message.answer(matn, reply_markup=channelsMenu(len(channels)), link_preview_options=LinkPreviewOptions(is_disabled=True))
     await state.set_state(AddChannel.channels)
 
 
@@ -170,5 +172,5 @@ async def back_del_channel_(call:CallbackQuery, state:FSMContext):
     matn = make_channels_list(channels)
     
     await call.message.delete()
-    await call.message.answer(matn, reply_markup=channelsMenu(len(channels)))
+    await call.message.answer(matn, reply_markup=channelsMenu(len(channels)), link_preview_options=LinkPreviewOptions(is_disabled=True))
     await state.set_state(AddChannel.channels)

@@ -6,11 +6,12 @@ from aiogram.fsm.context import FSMContext
 
 from states import CheckTest, ReNameUser
 from data.loader import db
-from keyboards import update_name, user_menu
+from keyboards import update_name, user_menu, back_btn
 
 rt = Router()
 
-# 1. TEST TEKSHIRISH (Boshlash)
+# userlar
+# Test tekshirish
 @rt.message(F.text == "✅ Javobni tekshirish")
 async def ask_test_code(message: Message, state: FSMContext):
     await message.answer(
@@ -32,12 +33,11 @@ async def ask_test_code_(call: CallbackQuery, state: FSMContext):
     )
     await state.set_state(CheckTest.answers)
 
-# 2. JAVOBLARNI QABUL QILISH VA TAHLIL
+
 @rt.message(F.text, CheckTest.answers)
 async def get_answers(message: Message, state: FSMContext):
     if message.text in ["📊 Natijalarim", "👤 Profile", "ℹ️ Bot haqida", "✅ Javobni tekshirish"]:
         await state.clear()
-        # Bu yerda xabarni qayta ishlash uchun reply qilamiz yoki foydalanuvchiga qayta yozishini aytamiz
         await message.answer("✅ Javobni tekshirish amali bekor qilindi.", reply_markup=user_menu)
         return
 
@@ -54,13 +54,11 @@ async def get_answers(message: Message, state: FSMContext):
         await message.answer("❌ <b>Test kodi faqat raqamlardan iborat bo'lishi kerak!</b>")
         return
 
-    # Bazadan testni olish
     test = await db.get_test(test_code)
     if not test:
         await message.answer("❌ <b>Test topilmadi!</b>")
         return
 
-    # Statusni tekshirish (test[4] - status deb olsak)
     if test[4] == 'waiting':
         await message.answer("⚠️ <b>Kechirasiz, test hali boshlanmagan.</b>")
         return
@@ -68,14 +66,12 @@ async def get_answers(message: Message, state: FSMContext):
         await message.answer("⚠️ <b>Kechirasiz, test yakunlangan.</b>")
         return
 
-    # Avval topshirganini tekshirish
     already_done = await db.check_user_finished(message.from_user.id, test[0])
     if already_done:
         await message.answer("🚫 <b>Siz bu testni topshirib bo'lgansiz!</b>")
         await state.clear()
         return
 
-    # Javoblarni regex bilan tozalash (faqat harflarni olish)
     correct_ans = "".join(re.findall(r'[a-z]', test[2].lower()))
     user_ans = "".join(re.findall(r'[a-z]', user_ans_raw))
 
@@ -110,7 +106,6 @@ async def send_results(message: Message):
 
     text = "📊 <b>Sizning natijalaringiz:</b>\n\n"
     for i, res in enumerate(results, 1):
-        # res: (test_title, result, percentage, date)
         text += f"{i}. {res[0]} | <b>{res[1]}</b> ({int(res[2])}%)\n"
     
     await message.answer(text)
@@ -144,8 +139,15 @@ async def about_bot(message: Message):
 async def ask_new_name(call:CallbackQuery, state:FSMContext):
     await call.message.delete()
     await call.message.answer("<b>✍️ Ism o'zgartirish</b>\n\n"
-                              "Yangi ismingizni kiriting")
+                              "Yangi ismingizni kiriting", reply_markup=back_btn)
     await state.set_state(ReNameUser.wait_new_name)
+
+
+@rt.callback_query(F.data == "back_", ReNameUser.wait_new_name)
+async def update_user_name(call:CallbackQuery, state:FSMContext):
+    await call.message.delete()
+    await call.message.answer(f"<b>Ism o'zgartirilmadi.</b>")
+    await state.clear()
 
 
 @rt.message(F.text, ReNameUser.wait_new_name)

@@ -1,4 +1,5 @@
 from aiogram.types import ReplyKeyboardMarkup, KeyboardButton, KeyboardButtonRequestChat, KeyboardButtonRequestUser
+from data.config import ADMIN
 
 
 # For Users
@@ -19,27 +20,36 @@ user_menu = ReplyKeyboardMarkup(
 
 
 # For admins
-owner_menu = ReplyKeyboardMarkup(
-    keyboard=[
+def ownerMenu(user_id:int):
+    btn = [
         [
             KeyboardButton(text="➕ Test yaratish"),
             KeyboardButton(text="📋 Testlarim")
-        ],
-        [
-            KeyboardButton(text="📢 Majburiy obuna"),
-            KeyboardButton(text="👨‍💻 Adminlar")
-        ],
+        ]
+    ]
+
+    if user_id == ADMIN:
+        btn.append(
+            [
+                KeyboardButton(text="📢 Majburiy obuna"),
+                KeyboardButton(text="👨‍💻 Adminlar")
+            ])
+        
+    btn.append(
         [
             KeyboardButton(text="✉️ Xabar yuborish")
-        ],
+        ])
+    btn.append(
         [
             KeyboardButton(text="📈 Statistika"),
             KeyboardButton(text="👤 Profile")
-        ]
-    ],
-    resize_keyboard=True,
-    one_time_keyboard=True
-)
+        ])
+    
+    return ReplyKeyboardMarkup(
+        keyboard=btn,
+        resize_keyboard=True,
+        one_time_keyboard=True
+    )
 
 
 admin_menu = ReplyKeyboardMarkup(
@@ -61,17 +71,11 @@ admin_menu = ReplyKeyboardMarkup(
 )
 
 
-test_duration_btn = ReplyKeyboardMarkup(
+create_test_back = ReplyKeyboardMarkup(
     keyboard=[
         [
-            KeyboardButton(text="3 soat"),
-            KeyboardButton(text="5 soat"),
-            KeyboardButton(text="10 soat")
-        ],
-        [
-            KeyboardButton(text="1 kun"),
-            KeyboardButton(text="3 kun"),
-            KeyboardButton(text="1 hafta")
+            KeyboardButton(text="↩️ Orqaga"),
+            
         ]
     ], resize_keyboard=True
 )

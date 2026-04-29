@@ -5,7 +5,7 @@ import sys
 from aiogram import Bot, Dispatcher
 from aiogram.client.default import DefaultBotProperties
 from aiogram.enums import ParseMode
-from aiogram.types import BotCommand
+from aiogram.types import BotCommand, BotCommandScopeDefault
 
 from data.config import BOT_TOKEN, ADMIN
 from handlers import router
@@ -39,10 +39,15 @@ async def main():
     dp.include_router(router)
     dp.message.outer_middleware(SubscriptionMiddleware())
     dp.callback_query.outer_middleware(SubscriptionMiddleware())
-    bot = Bot(token=BOT_TOKEN, default=DefaultBotProperties(parse_mode = ParseMode.HTML))
+    bot = Bot(token=BOT_TOKEN, default=DefaultBotProperties(parse_mode = ParseMode.HTML), link_preview_is_disabled=True)
     await dp.start_polling(bot)
 
-    await bot.set_my_commands([BotCommand(command="start", description="Start the bot")])
+    await bot.set_my_commands(
+        commands=[
+            BotCommand(command="start", description="Botni qayta ishga tushirish")
+        ],
+        scope=BotCommandScopeDefault()
+    )
 
 
 if __name__=="__main__":

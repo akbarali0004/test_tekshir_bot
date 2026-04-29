@@ -1,9 +1,8 @@
 from aiogram import Router, F, Bot
 from aiogram.types import Message, CallbackQuery, ReplyKeyboardRemove
-from aiogram.filters import Command
 from aiogram.fsm.context import FSMContext
 
-from keyboards import owner_menu, adminsMenu, back_btn, get_admin_btn, checkerDelBtn, adminsListBtn
+from keyboards import ownerMenu, adminsMenu, back_btn, get_admin_btn, checkerDelBtn, adminsListBtn
 from states import AddAdmin, DelAdmin
 from filters import IsOwner
 from data.loader import db
@@ -17,7 +16,7 @@ rt.message.filter(IsOwner())
 rt.callback_query.filter(IsOwner())
 
 
-""" Adminlar bo'limi """
+# Adminlarni boshqarish
 @rt.message(F.text == "👨‍💻 Adminlar")
 async def send_channels_list(message:Message, state:FSMContext):
     admins = await db.get_admins()
@@ -43,7 +42,8 @@ async def back_add_admin_(message:Message, state:FSMContext):
 
     matn = make_admins_list(admins)
     
-    await message.answer("Yangi admin qo'shilmadi.", reply_markup=owner_menu)
+    user_id = message.from_user.id
+    await message.answer("Yangi admin qo'shilmadi.", reply_markup=ownerMenu(user_id))
     await message.answer(matn, reply_markup=adminsMenu(len(admins)))
     await state.set_state(AddAdmin.admins)
 
@@ -58,7 +58,6 @@ async def get_admin_id(message:Message, state:FSMContext, bot:Bot):
     data = await state.get_data()
     admins = data.get("admins", [])
 
-    # Admin bazada bor yo'qligini tekshirish
     user = await db.get_user(new_admin)
     if user:
         if not user[4] in ['owner', 'admin']:
@@ -95,8 +94,9 @@ async def back_add_admin_(call:CallbackQuery, state:FSMContext):
 
     matn = make_admins_list(admins)
     
+    user_id = call.from_user.id
     await call.message.delete()
-    await call.message.answer("Yangi admin qo'shilmadi.", reply_markup=owner_menu)
+    await call.message.answer("Yangi admin qo'shilmadi.", reply_markup=ownerMenu(user_id))
     await call.message.answer(matn, reply_markup=adminsMenu(len(admins)))
     await state.set_state(AddAdmin.admins)
 

@@ -13,15 +13,12 @@ class SubscriptionMiddleware(BaseMiddleware):
         event: Union[Message, CallbackQuery],
         data: Dict[str, Any],
     ) -> Any:
-        # 1. User mavjudligini tekshirish
         if not event.from_user:
             return await handler(event, data)
         
-        # --- ADMINLAR UCHUN ISTISNO ---
         if event.from_user.id in loader.ADMINS:
             return await handler(event, data)
 
-        # 2. Tekshirish kerak bo'lgan holatlarni aniqlash
         should_check = False
 
         old_command = 'start'
@@ -38,11 +35,9 @@ class SubscriptionMiddleware(BaseMiddleware):
                 old_command = event.data.split(':')[1]
                 should_check = True
 
-        # Agar yuqoridagilarga tushmasa, tekshirmasdan o'tkazib yuboramiz
         if not should_check:
             return await handler(event, data)
 
-        # Loader keshidan kanallarni olamiz
         channels = loader.CHANNELS 
         
         if not channels:
@@ -91,11 +86,9 @@ class SubscriptionMiddleware(BaseMiddleware):
             
             text = "<b>⚠️ Botdan foydalanish uchun quyidagi kanallarga obuna bo'lishingiz shart:</b>"
             
-            # Message yoki CallbackQuery ekanligiga qarab javob berish
             if isinstance(event, Message):
                 await event.answer(text, reply_markup=builder.as_markup())
             else:
-                # Tugma bosilganda obuna yo'qligi haqida ogohlantirish
                 await event.answer("Siz hali hamma kanallarga a'zo emassiz!", show_alert=True)
                 try:
                     await event.message.edit_text(text, reply_markup=builder.as_markup())
